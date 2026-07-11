@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Борта ДПС — Улан-Удэ</title>
+<style>
+  :root{
+    --bg:#0e1116; --card:#171b22; --card2:#1e232c; --line:#2a3039;
+    --txt:#e8ecf1; --dim:#8b95a3; --red:#ff5f56; --amber:#ffbd2e;
+    --green:#3ddc84; --blue:#4d9fff; --grey:#6b7480;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+
+  header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  h1{font-size:22px;margin:0;letter-spacing:-.3px}
+  .meta{color:var(--dim);font-size:13px}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px}
+  .dot.stale{background:var(--amber)}
+  .dot.old{background:var(--red)}
+
+  /* поиск */
+  .ask{position:relative;margin-bottom:12px}
+  .ask input{width:100%;padding:16px 46px 16px 18px;font-size:18px;border-radius:14px;
+    border:1px solid var(--line);background:var(--card);color:var(--txt);outline:none}
+  .ask input:focus{border-color:var(--blue)}
+  .ask .clear{position:absolute;right:14px;top:50%;transform:translateY(-50%);
+    color:var(--dim);cursor:pointer;font-size:20px;display:none;background:none;border:0}
+  .ask.has .clear{display:block}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+  .chip{padding:6px 12px;border-radius:999px;background:var(--card2);border:1px solid var(--line);
+    color:var(--dim);font-size:13px;cursor:pointer;user-select:none}
+  .chip:hover{color:var(--txt);border-color:var(--grey)}
+  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+
+  /* ответ на вопрос */
+  .answer{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:22px}
+  .answer .verdict{font-size:20px;font-weight:600;margin-bottom:4px}
+  .answer .sub{color:var(--dim);font-size:14px;margin-bottom:14px}
+  .v-red{color:var(--red)} .v-green{color:var(--green)} .v-amber{color:var(--amber)} .v-grey{color:var(--dim)}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+  @media(max-width:760px){.cols{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .panel h2{margin:0;padding:14px 16px;font-size:14px;letter-spacing:.4px;text-transform:uppercase;
+    color:var(--dim);border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .panel .body{max-height:420px;overflow-y:auto}
+  .empty{padding:22px 16px;color:var(--dim);font-size:14px}
+
+  .msg{padding:11px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px}
+  .msg:last-child{border-bottom:0}
+  .msg .bar{width:3px;border-radius:2px;flex:0 0 3px;background:var(--grey)}
+  .msg.active .bar{background:var(--red)}
+  .msg.passive .bar{background:var(--amber)}
+  .msg.clean .bar{background:var(--green)}
+  .msg.question .bar{background:#3a4250}
+  .msg .c{flex:1;min-width:0}
+  .msg .txt{white-space:pre-wrap;word-wrap:break-word}
+  .msg .quote{border-left:2px solid var(--grey);padding-left:8px;margin-bottom:4px;
+    color:var(--dim);font-size:13px;line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .fwd{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;margin-right:6px;vertical-align:1px}
+  .msg .line{margin-top:3px;font-size:12.5px;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .who{color:#a9b4c2}
+  .age{padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line)}
+  .age.fresh{color:var(--red);border-color:rgba(255,95,86,.4);background:rgba(255,95,86,.1)}
+  .age.mid{color:var(--amber);border-color:rgba(255,189,46,.35);background:rgba(255,189,46,.08)}
+  .age.old{color:var(--dim)}
+  .bort{padding:1px 7px;border-radius:6px;font-size:11px;font-weight:600;
+    background:rgba(77,159,255,.15);color:var(--blue);border:1px solid rgba(77,159,255,.3)}
+  mark{background:rgba(255,189,46,.28);color:inherit;border-radius:3px;padding:0 2px}
+
+  .feed{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .feed h2{margin:0;padding:14px 16px;font-size:14px;letter-spacing:.4px;text-transform:uppercase;
+    color:var(--dim);border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .feed .body{max-height:560px;overflow-y:auto}
+  .hint{margin-top:24px;color:var(--dim);font-size:13px;line-height:1.6}
+  code{background:var(--card2);padding:2px 6px;border-radius:5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🚨 Борта ДПС — Улан-Удэ</h1>
+    <div class="meta" id="meta">загружаю…</div>
+  </header>
+
+  <div class="ask" id="askBox">
+    <input id="q" placeholder="Спроси: бурвод, мегадом, левый, солдатский, горький…" autocomplete="off" autofocus>
+    <button class="clear" id="clear">×</button>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div id="answer"></div>
+
+  <div class="cols">
+    <div class="panel">
+      <h2><span>🔴 Где стоят борта</span><span id="cntA"></span></h2>
+      <div class="body" id="listA"></div>
+    </div>
+    <div class="panel">
+      <h2><span>🟢 Чисто</span><span id="cntC"></span></h2>
+      <div class="body" id="listC"></div>
+    </div>
+  </div>
+
+  <div class="feed">
+    <h2><span>💬 Вся лента чата</span><span id="cntF"></span></h2>
+    <div class="body" id="listF"></div>
+  </div>
+
+  <div class="hint" id="hint">
+    Данные — сообщения людей из чата «АНТИ ДПС 03 TG», а не онлайн-карта: борт, отмеченный
+    20–30 минут назад, мог уже уехать.
+  </div>
+</div>
+
+<script>
+const CHIPS = ["бурвод","мегадом","кольцо","мелька","гмз","горький","левый","солдатский",
+               "почтовка","стрелка","саянтуй","труба","стимул","наран","сотые","типография"];
+
+let Q = "";
+
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function hl(text, q){
+  const t = esc(text);
+  if(!q) return t;
+  const parts = q.toLowerCase().split(/\s+/).filter(Boolean);
+  let out = t;
+  parts.forEach(p=>{
+    const re = new RegExp('('+p.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+    out = out.replace(re,'<mark>$1</mark>');
+  });
+  return out;
+}
+
+function ageOf(ts){
+  const mins = Math.max(0, Math.round((Date.now()/1000 - ts)/60));
+  let cls = 'old', label;
+  if(mins < 1) label = 'только что';
+  else if(mins < 60) label = mins + ' мин назад';
+  else label = Math.floor(mins/60) + ' ч ' + (mins%60) + ' мин назад';
+  if(mins <= 15) cls = 'fresh';
+  else if(mins <= 45) cls = 'mid';
+  return {mins, cls, label};
+}
+
+function msgHTML(m){
+  const a = ageOf(m.ts);
+  const borts = (m.borts||[]).map(b=>`<span class="bort">${b}</span>`).join(' ');
+  const quote = m.quote ? `<div class="quote">${hl(m.quote, Q)}</div>` : '';
+  const fwd = m.fwd ? `<span class="fwd">переслано</span>` : '';
+  return `<div class="msg ${m.kind}">
+    <div class="bar"></div>
+    <div class="c">
+      ${quote}
+      <div class="txt">${fwd}${hl(m.text, Q)}</div>
+      <div class="line">
+        <span class="who">${esc(m.author)}</span>
+        <span>${m.time}</span>
+        <span class="age ${a.cls}">${a.label}</span>
+        ${borts}
+      </div>
+    </div>
+  </div>`;
+}
+
+function matches(m, q){
+  if(!q) return true;
+  const hay = (m.text + ' ' + m.author).toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+
+function render(){
+  const D = window.DPS;
+  if(!D){ document.getElementById('meta').textContent = 'нет data.js — запусти сбор'; return; }
+
+  const age = Math.round((Date.now()/1000 - D.updated_ts)/60);
+  const dcls = age <= 5 ? '' : (age <= 20 ? 'stale' : 'old');
+  document.getElementById('meta').innerHTML =
+    `<span class="dot ${dcls}"></span>данные на ${D.updated} · окно ${D.window} · ${D.messages.length} сообщений` +
+    (age > 5 ? ` · <b>обновлялось ${age} мин назад</b>` : '');
+
+  const all = D.messages.slice().reverse();          // новые сверху
+  const sel = all.filter(m => matches(m, Q));
+
+  // ---- карточка ответа ----
+  const ans = document.getElementById('answer');
+  if(Q){
+    const reports = sel.filter(m => m.kind==='active' || m.kind==='passive' || m.kind==='clean');
+    const last = reports[0];
+    let verdict, cls, sub;
+    if(!last){
+      verdict = 'Никто не отписывал'; cls='v-grey';
+      sub = `За последние ${D.window_hours} ч по запросу «${Q}» отчётов нет — только вопросы или ничего.`;
+    } else {
+      const a = ageOf(last.ts);
+      if(last.kind==='active'){ verdict='🔴 Стоят'; cls='v-red'; }
+      else if(last.kind==='passive'){ verdict='🟠 Борт есть, но не работает'; cls='v-amber'; }
+      else { verdict='🟢 Чисто'; cls='v-green'; }
+      sub = `Последняя отписка: ${last.author}, ${last.time} (${a.label})`;
+      if(a.mins > 30) sub += ' — уже несвежо';
+    }
+    ans.innerHTML = `<div class="answer">
+        <div class="verdict ${cls}">${verdict}</div>
+        <div class="sub">${esc(sub)}</div>
+        ${sel.length ? sel.slice(0,12).map(msgHTML).join('') : '<div class="empty">Ничего не найдено.</div>'}
+      </div>`;
+  } else {
+    ans.innerHTML = '';
+  }
+
+  // ---- колонки ----
+  const A = sel.filter(m => m.kind==='active' || m.kind==='passive');
+  const C = sel.filter(m => m.kind==='clean');
+  const put = (id, arr, empty) => {
+    document.getElementById(id).innerHTML = arr.length ? arr.map(msgHTML).join('')
+      : `<div class="empty">${empty}</div>`;
+  };
+  put('listA', A, 'Бортов не отписывали.');
+  put('listC', C, 'Отписок «чисто» нет.');
+  put('listF', sel, 'Пусто.');
+  document.getElementById('cntA').textContent = A.length;
+  document.getElementById('cntC').textContent = C.length;
+  document.getElementById('cntF').textContent = sel.length;
+}
+
+// поиск
+const qEl = document.getElementById('q');
+const askBox = document.getElementById('askBox');
+qEl.addEventListener('input', () => {
+  Q = qEl.value.trim();
+  askBox.classList.toggle('has', !!Q);
+  document.querySelectorAll('.chip').forEach(c =>
+    c.classList.toggle('on', c.textContent === Q.toLowerCase()));
+  render();
+});
+document.getElementById('clear').onclick = () => { qEl.value=''; Q=''; askBox.classList.remove('has');
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); render(); qEl.focus(); };
+
+const chipsEl = document.getElementById('chips');
+CHIPS.forEach(c => {
+  const b = document.createElement('div');
+  b.className = 'chip'; b.textContent = c;
+  b.onclick = () => {
+    const on = b.classList.contains('on');
+    qEl.value = on ? '' : c;
+    qEl.dispatchEvent(new Event('input'));
+  };
+  chipsEl.appendChild(b);
+});
+
+// Откуда брать данные:
+//  • файл открыт с диска (file://) → локальный data.js, который пишет скрипт на маке
+//  • страница открыта из интернета  → data.js, который мак выгружает на GitHub
+const REMOTE = 'https://raw.githubusercontent.com/gunsambo2001-dotcom/dps-data/main/data.js';
+const DATA_URL = (location.protocol === 'file:') ? 'data.js' : REMOTE;
+
+// первая загрузка + автоперечитывание каждые 30 сек
+function loadData(){
+  const s = document.createElement('script');
+  s.src = DATA_URL + '?ts=' + Date.now();
+  s.onload = () => { render(); s.remove(); };
+  s.onerror = () => { document.getElementById('meta').textContent = 'нет data.js — запусти сбор'; };
+  document.head.appendChild(s);
+}
+loadData();
+setInterval(loadData, 30000);
+setInterval(render, 60000);   // пересчёт «сколько минут назад»
+</script>
+</body>
+</html>
