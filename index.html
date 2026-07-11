@@ -257,18 +257,29 @@ CHIPS.forEach(c => {
 });
 
 // Откуда брать данные:
-//  • файл открыт с диска (file://) → локальный data.js, который пишет скрипт на маке
-//  • страница открыта из интернета  → data.js, который мак выгружает на GitHub
-const REMOTE = 'https://raw.githubusercontent.com/gunsambo2001-dotcom/dps-data/main/data.js';
-const DATA_URL = (location.protocol === 'file:') ? 'data.js' : REMOTE;
+//  • файл открыт с диска (file://) → локальный data.js, подключаем тегом <script>
+//  • страница открыта из интернета  → data.json, который мак выгружает на GitHub;
+//    именно JSON, потому что GitHub отдаёт .js как обычный текст и браузер его не исполнит
+const LOCAL  = 'data.js';
+const REMOTE = 'https://raw.githubusercontent.com/gunsambo2001-dotcom/dps-data/main/data.json';
+const IS_FILE = (location.protocol === 'file:');
+
+function fail(msg){ document.getElementById('meta').textContent = msg; }
 
 // первая загрузка + автоперечитывание каждые 30 сек
 function loadData(){
-  const s = document.createElement('script');
-  s.src = DATA_URL + '?ts=' + Date.now();
-  s.onload = () => { render(); s.remove(); };
-  s.onerror = () => { document.getElementById('meta').textContent = 'нет data.js — запусти сбор'; };
-  document.head.appendChild(s);
+  if(IS_FILE){
+    const s = document.createElement('script');
+    s.src = LOCAL + '?ts=' + Date.now();
+    s.onload  = () => { render(); s.remove(); };
+    s.onerror = () => fail('нет data.js — запусти сбор');
+    document.head.appendChild(s);
+    return;
+  }
+  fetch(REMOTE + '?ts=' + Date.now(), {cache:'no-store'})
+    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j => { window.DPS = j; render(); })
+    .catch(() => fail('данные не загрузились — мак сейчас выключен?'));
 }
 loadData();
 setInterval(loadData, 30000);
