@@ -284,19 +284,22 @@ const IS_FILE = (location.protocol === 'file:');
 function fail(msg){ document.getElementById('meta').textContent = msg; }
 
 // первая загрузка + автоперечитывание каждые 30 сек
+function fetchRemote(){
+  fetch(REMOTE + '?ts=' + Date.now(), {cache:'no-store'})
+    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j => { window.DPS = j; render(); })
+    .catch(() => fail('данные не загрузились — мак сейчас выключен?'));
+}
 function loadData(){
   if(IS_FILE){
     const s = document.createElement('script');
     s.src = LOCAL + '?ts=' + Date.now();
     s.onload  = () => { render(); s.remove(); };
-    s.onerror = () => fail('нет data.js — запусти сбор');
+    s.onerror = () => { s.remove(); fetchRemote(); };  // нет локального data.js (файл открыт не на маке) → берём с сайта
     document.head.appendChild(s);
     return;
   }
-  fetch(REMOTE + '?ts=' + Date.now(), {cache:'no-store'})
-    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(j => { window.DPS = j; render(); })
-    .catch(() => fail('данные не загрузились — мак сейчас выключен?'));
+  fetchRemote();
 }
 loadData();
 setInterval(loadData, 30000);
