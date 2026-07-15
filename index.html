@@ -21,6 +21,8 @@
   .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px}
   .dot.stale{background:var(--amber)}
   .dot.old{background:var(--red)}
+  .warnday{display:inline-block;background:rgba(255,95,86,.15);color:var(--red);
+    border:1px solid rgba(255,95,86,.45);border-radius:6px;padding:2px 8px;margin-right:6px;font-weight:600}
 
   /* поиск */
   .ask{position:relative;margin-bottom:12px}
@@ -126,6 +128,17 @@ const CHIPS = ["бурвод","мегадом","кольцо","мелька","г
 
 let Q = "";
 
+const RU_MON = ['','января','февраля','марта','апреля','мая','июня','июля',
+                'августа','сентября','октября','ноября','декабря'];
+function ymdLocal(ts){
+  const d = new Date(ts*1000);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function ruDate(dstr){                         // 'YYYY-MM-DD' → '15 июля'
+  const p = (dstr||'').split('-').map(Number);
+  return (p.length===3 && RU_MON[p[1]]) ? (p[2]+' '+RU_MON[p[1]]) : '';
+}
+
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 function hl(text, q){
@@ -183,8 +196,12 @@ function render(){
 
   const age = Math.round((Date.now()/1000 - D.updated_ts)/60);
   const dcls = age <= 5 ? '' : (age <= 20 ? 'stale' : 'old');
+  const dataDate = D.date || (D.updated_full||'').split(' ')[0] || '';
+  const dateLabel = ruDate(dataDate);
+  const wrongDay = dataDate && dataDate !== ymdLocal(Date.now()/1000);
   document.getElementById('meta').innerHTML =
-    `<span class="dot ${dcls}"></span>данные на ${D.updated} · окно ${D.window} · ${D.messages.length} сообщений` +
+    (wrongDay ? `<span class="warnday">⚠ данные за ${dateLabel} — не сегодня</span> ` : '') +
+    `<span class="dot ${dcls}"></span>данные на ${dateLabel ? dateLabel+', ' : ''}${D.updated} · окно ${D.window} · ${D.messages.length} сообщений` +
     (age > 5 ? ` · <b>обновлялось ${age} мин назад</b>` : '');
 
   const all = D.messages.slice().reverse();          // новые сверху
